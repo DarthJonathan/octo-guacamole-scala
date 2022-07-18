@@ -55,7 +55,7 @@ class Example1Routes(services: Services)(implicit ec: ExecutionContext) extends 
     path("example1" / "service" / Segment / Segment) { (serviceId, command) =>
       get {
         withService(serviceId) { service =>
-          val future = (service ? ExampleMessage(command)).mapTo[String]
+          val future = (service ? (replyTo => ExampleMessage(command, replyTo))).mapTo[String]
 
           onComplete(future) {
             case Success(result) =>
