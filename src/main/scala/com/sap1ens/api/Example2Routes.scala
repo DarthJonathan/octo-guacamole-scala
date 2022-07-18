@@ -1,10 +1,11 @@
 package com.sap1ens.api
 
 import scala.concurrent.ExecutionContext
-import spray.util.LoggingContext
-import spray.routing._
 
-class Example2Routes(implicit ec: ExecutionContext, log: LoggingContext) extends ApiRoute {
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+
+class Example2Routes(implicit ec: ExecutionContext) extends ApiRoute {
 
   val route: Route =
     path("example2") {

@@ -1,20 +1,21 @@
 package com.sap1ens.api
 
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+
 import scala.concurrent.ExecutionContext
-import spray.util.LoggingContext
 import spray.json.DefaultJsonProtocol
-import spray.routing._
-import spray.http.StatusCodes
-import akka.actor.ActorRef
 import akka.pattern.ask
+
 import scala.util.{Failure, Success}
 import akka.util.Timeout
+
 import scala.concurrent.duration._
 import com.sap1ens.ExampleService.ExampleMessage
 import com.sap1ens.Services
-import scala.util.Success
-import scala.util.Failure
-import com.sap1ens.ExampleService.ExampleMessage
+
+import scala.language.postfixOps
 
 object Example1Routes {
   case class TestAPIObject(thing: String)
@@ -24,7 +25,7 @@ object Example1Routes {
   }
 }
 
-class Example1Routes(services: Services)(implicit ec: ExecutionContext, log: LoggingContext) extends ApiRoute(services) {
+class Example1Routes(services: Services)(implicit ec: ExecutionContext) extends ApiRoute(services) {
 
   import Example1Routes._
   import Example1RoutesProtocol._
@@ -61,7 +62,7 @@ class Example1Routes(services: Services)(implicit ec: ExecutionContext, log: Log
               complete(Message(result))
 
             case Failure(e) =>
-              log.error(s"Error: ${e.toString}")
+//              log.error(s"Error: ${e.toString}")
               complete(StatusCodes.InternalServerError, Message(ApiMessages.UnknownException))
           }
         }

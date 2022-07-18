@@ -1,18 +1,17 @@
 package com.sap1ens.api
 
-import spray.routing._
-import akka.actor.{ActorRef, ActorLogging, Props}
-import akka.io.IO
+import akka.actor.{ActorLogging, ActorRef, Props}
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import spray.can.Http
 import spray.json.DefaultJsonProtocol
-import spray.util.LoggingContext
-import spray.httpx.SprayJsonSupport
 import com.sap1ens.utils.ConfigHolder
-import com.sap1ens.{Services, Core, CoreActors}
-import spray.http.HttpHeaders.{`Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`}
-import spray.http.HttpMethods._
-import spray.http.{StatusCodes, HttpOrigin, SomeOrigins}
+import com.sap1ens.{Core, CoreActors, Services}
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.model.HttpMethods._
+import akka.http.scaladsl.model.headers._
+import akka.http.scaladsl.model.{StatusCodes}
+import akka.http.scaladsl.server.{Directives, Route}
 
 trait CORSSupport extends Directives {
   private val CORSHeaders = List(
@@ -22,7 +21,7 @@ trait CORSSupport extends Directives {
   )
 
   def respondWithCORS(origin: String)(routes: => Route) = {
-    val originHeader = `Access-Control-Allow-Origin`(SomeOrigins(Seq(HttpOrigin(origin))))
+    val originHeader = `Access-Control-Allow-Origin`.*
 
     respondWithHeaders(originHeader :: CORSHeaders) {
       routes ~ options { complete(StatusCodes.OK) }
@@ -30,7 +29,7 @@ trait CORSSupport extends Directives {
   }
 }
 
-trait Api extends Directives with RouteConcatenation with CORSSupport with ConfigHolder {
+trait Api extends Directives with CORSSupport with ConfigHolder {
   this: CoreActors with Core =>
 
   val routes =
@@ -41,17 +40,7 @@ trait Api extends Directives with RouteConcatenation with CORSSupport with Confi
       }
     }
 
-  val rootService = system.actorOf(ApiService.props(config.getString("hostname"), config.getInt("port"), routes))
-}
-
-object ApiService {
-  def props(hostname: String, port: Int, routes: Route) = Props(classOf[ApiService], hostname, port, routes)
-}
-
-class ApiService(hostname: String, port: Int, route: Route) extends HttpServiceActor with ActorLogging {
-  IO(Http)(context.system) ! Http.Bind(self, hostname, port)
-
-  def receive: Receive = runRoute(route)
+  Http().newServerAt(config.getString("hostname"), port = config.getInt("port")).bind(routes)
 }
 
 object ApiRoute {
@@ -67,7 +56,7 @@ object ApiRoute {
   }
 }
 
-abstract class ApiRoute(services: Services = Services.empty)(implicit log: LoggingContext) extends Directives with SprayJsonSupport {
+abstract class ApiRoute(services: Services = Services.empty) extends Directives with SprayJsonSupport {
 
   import com.sap1ens.api.ApiRoute.{ApiMessages, Message}
   import com.sap1ens.api.ApiRoute.ApiRouteProtocol._
@@ -78,7 +67,7 @@ abstract class ApiRoute(services: Services = Services.empty)(implicit log: Loggi
         action(provider)
 
       case None =>
-        log.error(s"Unsupported service: $id")
+//        log.error(s"Unsupported service: $id")
         complete(StatusCodes.BadRequest, Message(ApiMessages.UnsupportedService))
     }
   }
